@@ -12,10 +12,12 @@ const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL, // Vercel frontend URL
     methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'], 
+    allowedHeaders: ['Content-Type'],
+    credentials: true, // Allow cookies if needed
   },
-  transports: ['websocket'],
+  transports: ['websocket', 'polling'], // Use both WebSocket and fallback polling
 });
+
 
 connectDB();
 
@@ -105,6 +107,6 @@ io.on('connection', async (socket) => {
 
 // Start Server
 const PORT = process.env.PORT || 8000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
