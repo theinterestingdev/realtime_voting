@@ -21,7 +21,12 @@ const io = new Server(server, {
 
 connectDB();
 
-app.use(cors({ origin: process.env.CLIENT_URL }));
+app.use(cors({
+  origin: process.env.CLIENT_URL, // Ensure this matches your Vercel frontend URL
+  methods: ['GET', 'POST'],
+  credentials: true, // Allow cookies and authentication headers
+}));
+
 app.use(express.json());
 
 // Voting Schema and Model
