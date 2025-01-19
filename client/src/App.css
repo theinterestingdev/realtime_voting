@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+
+*{
+  font-family: "Poppins", serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: xx-large;
+  background-color: #1d1d1d;
+}
+
+
+.progress
+{
+  margin: 12px 0;
+  border: 1px solid white;
+  padding: 20px 20px;
+  background-color: black;
+  box-sizing: border-box;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all ease-in-out 0.3s;
+  color:white;
+}
+
+.progress:hover{
+  
+  transform: scale(1.004); /* Adds a slight zoom effect */
+  outline: 1px solid rgb(236, 236, 236); /* Use outline instead of border */
+  transition: all ease-in-out 0.3s;
+  
+}
+
+p
+{
+  font-size: large;
+  background-color: black;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  position: relative;
+  background: #222;
+  box-shadow: inset 0 8px 60px rgba(0,0,0,1),
+  inset 0 8px 8px rgba(0,0,0,0.1),
+  inset 0 -4px 4px rgba(0,0,0,0.2);
+  margin: 12px 0;
+  border-radius: 16px;
+}
+
+.progress-bar span {
+  width: 0%; /* Start with 0 width */
+  height: 80%;
+  background: rgb(51, 255, 0);
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  border-radius: 16px;
+  transition: width 0.6s ease;
+}
+
+.progress-bar span::after {
+  content: attr(data);
+  position: absolute;
+  right: -25px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  padding: 3px 7px;
+  background: linear-gradient(to bottom, #333, #222);
+  font-weight: 600;
+  color: #fff;
+  border-radius: 24px;
+  border: 1px solid #0005;
+}
+
+
+
+.progress:nth-child(3) .progress-bar span {
+  filter: hue-rotate(10deg); 
+}
+
+.progress:nth-child(4) .progress-bar span {
+  filter: hue-rotate(230deg);
+}
+
+.progress:nth-child(5) .progress-bar span {
+  filter: hue-rotate(100deg);
+}
+
+.progress:nth-child(6) .progress-bar span {
+  filter: hue-rotate(300deg);
+}
+
+.progress:nth-child(7) .progress-bar span {
+  filter: hue-rotate(180deg);
+}
+
+
+
+
