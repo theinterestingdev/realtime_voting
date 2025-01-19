@@ -12,7 +12,9 @@ const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL, // Vercel frontend URL
     methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type'], 
   },
+  transports: ['websocket'],
 });
 
 connectDB();
