@@ -1,8 +1,9 @@
 import React from 'react'
 import './App.css'
-import Voting from './components/voting'
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AdminPanel from './components/AdminPanel'
+import Voting from './components/voting';
 
   
 const App = () => {
