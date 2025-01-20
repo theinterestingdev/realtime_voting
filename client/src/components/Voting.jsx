@@ -12,8 +12,13 @@ const Voting = () => {
   const [error, setError] = useState('');
   const [ws, setWs] = useState(null);
 
-  useEffect(() => {
+  const connectWebSocket = () => {
     const webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
+
+    webSocket.onopen = () => {
+      console.log('WebSocket connected');
+      setError('');
+    };
 
     webSocket.onmessage = (event) => {
       const message = JSON.parse(event.data);
@@ -26,22 +31,37 @@ const Voting = () => {
       }
     };
 
-    webSocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+    webSocket.onerror = (err) => {
+      console.error('WebSocket error:', err);
+      setError('WebSocket error occurred. Please try again later.');
+    };
+
+    webSocket.onclose = () => {
+      console.warn('WebSocket closed. Attempting to reconnect...');
+      setTimeout(connectWebSocket, 3000); // Retry connection after 3 seconds
     };
 
     setWs(webSocket);
+  };
 
+  useEffect(() => {
+    connectWebSocket();
     return () => {
-      webSocket.close();
+      if (ws) ws.close();
     };
   }, []);
 
   const addVote = (id) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      setError('Unable to vote. WebSocket is not connected.');
+      return;
+    }
+
     // if (vote) {
     //   setError('You have already voted!');
     //   return;
     // }
+
     ws.send(JSON.stringify({ type: 'vote', voteTo: id }));
     setVote(true);
   };
