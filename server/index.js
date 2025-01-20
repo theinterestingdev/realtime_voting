@@ -24,6 +24,7 @@ app.use(express.json());
 connectDB();
 
 // Voting Schema and Model
+// Add a field for voting state in the schema
 const votingSchema = new mongoose.Schema({
   votingPolls: {
     amazon: { type: Number, default: 0 },
@@ -33,10 +34,12 @@ const votingSchema = new mongoose.Schema({
   },
   totalVotes: { type: Number, default: 0 },
   ipVotes: { type: Map, of: String, default: {} },
+  isVotingActive: { type: Boolean, default: false }, // Add this field
 });
+
 const Voting = mongoose.model('Voting', votingSchema);
 
-// Initialize Voting Data
+// Update the initializeVotingData function
 const initializeVotingData = async () => {
   const existingData = await Voting.findOne();
   if (!existingData) {
@@ -46,33 +49,22 @@ const initializeVotingData = async () => {
 };
 initializeVotingData();
 
-// Store voting state globally
-let isVotingActive = false;
-
-// Routes
-app.post('/start-voting', (req, res) => {
-  isVotingActive = true;
+// Update the routes to modify the state in the database
+app.post('/start-voting', async (req, res) => {
+  await Voting.updateOne({}, { $set: { isVotingActive: true } });
   res.send({ message: 'Voting started' });
 });
 
-app.post('/stop-voting', (req, res) => {
-  isVotingActive = false;
+app.post('/stop-voting', async (req, res) => {
+  await Voting.updateOne({}, { $set: { isVotingActive: false } });
   res.send({ message: 'Voting stopped' });
 });
 
-app.post('/clear-votes', async (req, res) => {
-  await Voting.updateOne(
-    {},
-    {
-      $set: {
-        votingPolls: { amazon: 0, netflix: 0, disney: 0, hulu: 0 },
-        totalVotes: 0,
-      },
-      $unset: { ipVotes: '' },
-    }
-  );
-  res.send({ message: 'Votes and IPs cleared' });
+app.get('/voting-status', async (req, res) => {
+  const votingData = await Voting.findOne();
+  res.send({ isVotingActive: votingData.isVotingActive });
 });
+
 
 // WebSocket Handling
 wss.on('connection', async (ws, request) => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AdminPanel = () => {
@@ -6,8 +6,22 @@ const AdminPanel = () => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isVotingActive, setIsVotingActive] = useState(null);
 
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD; // Use environment variable
+
+  const fetchVotingStatus = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/voting-status`);
+      setIsVotingActive(response.data.isVotingActive);
+    } catch (error) {
+      setMessage(`Error fetching voting status: ${error.message}`);
+    }
+  };
+
+  useEffect(() => {
+    fetchVotingStatus();
+  }, []);
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -23,13 +37,13 @@ const AdminPanel = () => {
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/${action}`);
       setMessage(response.data.message);
+      fetchVotingStatus(); // Update the state after the action
     } catch (error) {
       setMessage(`Error performing action: ${error.response?.data?.message || error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
-  
 
   if (!isAuthenticated) {
     return (
@@ -56,13 +70,19 @@ const AdminPanel = () => {
   return (
     <div className="admin-panel w-full h-screen bg-gray-100 text-black flex flex-col justify-center items-center px-4">
       <h1 className="text-3xl font-bold mb-6">Admin Panel</h1>
+      <p className="mb-4">
+        Current Voting State:{' '}
+        <span className={isVotingActive ? 'text-green-500' : 'text-red-500'}>
+          {isVotingActive ? 'Active' : 'Inactive'}
+        </span>
+      </p>
       <div className="flex flex-col gap-4 w-full max-w-sm">
         <button
           onClick={() => handleAction('start-voting')}
           className={`bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ${
             isLoading ? 'opacity-50 cursor-not-allowed' : ''
           }`}
-          disabled={isLoading}
+          disabled={isLoading || isVotingActive}
         >
           Start Voting
         </button>
@@ -71,7 +91,7 @@ const AdminPanel = () => {
           className={`bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 ${
             isLoading ? 'opacity-50 cursor-not-allowed' : ''
           }`}
-          disabled={isLoading}
+          disabled={isLoading || !isVotingActive}
         >
           Stop Voting
         </button>
