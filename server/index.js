@@ -86,7 +86,9 @@ app.post('/clear-votes', async (req, res) => {
 
 // WebSocket Handling
 wss.on('connection', async (ws, request) => {
-  const ipAddress = request.socket.remoteAddress;
+  // Extract IP address from x-forwarded-for header or fallback to socket address
+  const forwarded = request.headers['x-forwarded-for'];
+  const ipAddress = forwarded ? forwarded.split(',')[0].trim() : request.socket.remoteAddress;
 
   console.log(`Connected: ${ipAddress}`);
   const votingData = await Voting.findOne();
@@ -100,7 +102,7 @@ wss.on('connection', async (ws, request) => {
 
       // Fetch the current voting state from the database
       const votingData = await Voting.findOne();
-      
+
       // Ensure voting is active before proceeding
       if (!votingData.isVotingActive) {
         ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
@@ -141,6 +143,7 @@ wss.on('connection', async (ws, request) => {
     console.error(`WebSocket error for ${ipAddress}:`, err);
   });
 });
+
 
 
 // Upgrade HTTP to WebSocket
