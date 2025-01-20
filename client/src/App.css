@@ -52,7 +52,7 @@ p
 .progress-bar span {
   width: 0%; /* Start with 0 width */
   height: 80%;
-  background: rgb(51, 255, 0);
+  
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -78,25 +78,6 @@ p
 
 
 
-.progress:nth-child(3) .progress-bar span {
-  filter: hue-rotate(10deg); 
-}
-
-.progress:nth-child(4) .progress-bar span {
-  filter: hue-rotate(230deg);
-}
-
-.progress:nth-child(5) .progress-bar span {
-  filter: hue-rotate(100deg);
-}
-
-.progress:nth-child(6) .progress-bar span {
-  filter: hue-rotate(300deg);
-}
-
-.progress:nth-child(7) .progress-bar span {
-  filter: hue-rotate(180deg);
-}
 
 
 
