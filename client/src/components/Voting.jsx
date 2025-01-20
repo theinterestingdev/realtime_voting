@@ -15,6 +15,10 @@ const Voting = () => {
   useEffect(() => {
     const webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
 
+    webSocket.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+
     webSocket.onmessage = (event) => {
       const message = JSON.parse(event.data);
 
@@ -30,6 +34,10 @@ const Voting = () => {
       console.error('WebSocket error:', error);
     };
 
+    webSocket.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
     setWs(webSocket);
 
     return () => {
@@ -42,8 +50,13 @@ const Voting = () => {
       setError('You have already voted!');
       return;
     }
-    ws.send(JSON.stringify({ type: 'vote', voteTo: id }));
-    setVote(true);
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'vote', voteTo: id }));
+      setVote(true);
+    } else {
+      setError('WebSocket connection is not ready. Please try again.');
+    }
   };
 
   return (
