@@ -1,11 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import io from 'socket.io-client';
-
-
-
-
-const socket = io(import.meta.env.VITE_BACKEND_URL); 
-
 
 const Voting = () => {
   const [votingPolls, setVotingPolls] = useState({
@@ -17,26 +10,30 @@ const Voting = () => {
   const [totalVotes, setTotalVotes] = useState(0);
   const [vote, setVote] = useState(false);
   const [error, setError] = useState('');
+  const [ws, setWs] = useState(null);
 
   useEffect(() => {
-    socket.on('update', (data) => {
-      setVotingPolls(data.votingPolls);
-      setTotalVotes(data.totalVotes);
-    });
+    const webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
 
-    socket.on('receive-vote', (data) => {
-      setVotingPolls(data.votingPolls);
-      setTotalVotes(data.totalVotes);
-    });
+    webSocket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
 
-    socket.on('vote-error', (message) => {
-      setError(message);
-    });
+      if (message.type === 'update') {
+        setVotingPolls(message.data.votingPolls);
+        setTotalVotes(message.data.totalVotes);
+      } else if (message.type === 'error') {
+        setError(message.message);
+      }
+    };
+
+    webSocket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    setWs(webSocket);
 
     return () => {
-      socket.off('update');
-      socket.off('receive-vote');
-      socket.off('vote-error');
+      webSocket.close();
     };
   }, []);
 
@@ -45,14 +42,13 @@ const Voting = () => {
       setError('You have already voted!');
       return;
     }
-    socket.emit('send-vote', id);
+    ws.send(JSON.stringify({ type: 'vote', voteTo: id }));
     setVote(true);
   };
 
   return (
     <div className="voting_main w-[520px] flex-col justify-center items-center bg-black p-4 rounded-md">
-      <h1 className="text-white font-extrabold bg-black">Make your vote count..</h1>
-      <h2 className="text-white bg-black">👀</h2>
+      <h1 className="text-white font-extrabold">Make your vote count..</h1>
       {error && <p className="text-red-500">{error}</p>}
       {Object.entries(votingPolls).map(([key, votes]) => {
         const percentage = totalVotes ? Math.round((votes / totalVotes) * 100) : 0;

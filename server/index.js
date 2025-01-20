@@ -1,33 +1,27 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const { Server } = require('socket.io');
-const http = require('http');
-const connectDB = require('./db/db');
+const { createServer } = require('http');
+const { WebSocketServer } = require('ws');
 require('dotenv').config();
 
+const connectDB = require('./db/db');
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL, // Vercel frontend URL
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'],
-    credentials: true, // Allow cookies if needed
-  },
-  transports: ['websocket', 'polling'], // Use both WebSocket and fallback polling
-});
+const server = createServer(app);
 
+// WebSocket Server
+const wss = new WebSocketServer({ noServer: true });
 
-connectDB();
-
+// Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL, // Ensure this matches your Vercel frontend URL
+  origin: process.env.CLIENT_URL,
   methods: ['GET', 'POST'],
-  credentials: true, // Allow cookies and authentication headers
+  credentials: true,
 }));
-
 app.use(express.json());
+
+// Connect to MongoDB
+connectDB();
 
 // Voting Schema and Model
 const votingSchema = new mongoose.Schema({
@@ -52,7 +46,7 @@ const initializeVotingData = async () => {
 };
 initializeVotingData();
 
-// Store the voting state globally
+// Store voting state globally
 let isVotingActive = false;
 
 // Routes
@@ -80,38 +74,67 @@ app.post('/clear-votes', async (req, res) => {
   res.send({ message: 'Votes and IPs cleared' });
 });
 
-// Socket.IO Events
-io.on('connection', async (socket) => {
-  console.log('New client connected');
+// WebSocket Handling
+wss.on('connection', async (ws, request) => {
+  const ipAddress = request.socket.remoteAddress;
+
+  console.log(`Connected: ${ipAddress}`);
   const votingData = await Voting.findOne();
-  socket.emit('update', votingData);
+  ws.send(JSON.stringify({ type: 'update', data: votingData }));
 
-  socket.on('send-vote', async (voteTo) => {
-    if (!isVotingActive) {
-      socket.emit('vote-error', 'Voting is currently stopped!');
-      return;
-    }
+  ws.on('message', async (message) => {
+    const parsedMessage = JSON.parse(message);
 
-    const votingData = await Voting.findOne(); // Fetch latest data from DB
-    if (votingData.votingPolls[voteTo] !== undefined) {
-      votingData.votingPolls[voteTo]++;
-      votingData.totalVotes++;
-      votingData.ipVotes.set(socket.request.connection.remoteAddress, voteTo);
+    if (parsedMessage.type === 'vote') {
+      const { voteTo } = parsedMessage;
 
-      await votingData.save();
-      io.emit('receive-vote', votingData);
-    } else {
-      socket.emit('vote-error', 'Invalid vote option!');
+      if (!isVotingActive) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
+        return;
+      }
+
+      const votingData = await Voting.findOne();
+      if (votingData.ipVotes.has(ipAddress)) {
+        ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
+        return;
+      }
+
+      if (votingData.votingPolls[voteTo] !== undefined) {
+        votingData.votingPolls[voteTo]++;
+        votingData.totalVotes++;
+        votingData.ipVotes.set(ipAddress, voteTo);
+
+        await votingData.save();
+
+        wss.clients.forEach((client) => {
+          if (client.readyState === client.OPEN) {
+            client.send(JSON.stringify({ type: 'update', data: votingData }));
+          }
+        });
+      } else {
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid vote option!' }));
+      }
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
+  ws.on('close', () => {
+    console.log(`Disconnected: ${ipAddress}`);
+  });
+
+  ws.on('error', (err) => {
+    console.error(`WebSocket error for ${ipAddress}:`, err);
+  });
+});
+
+// Upgrade HTTP to WebSocket
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
   });
 });
 
 // Start Server
 const PORT = process.env.PORT || 8000;
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
