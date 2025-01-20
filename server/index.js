@@ -49,6 +49,7 @@ const initializeVotingData = async () => {
 };
 initializeVotingData();
 
+
 // Update the routes to modify the state in the database
 app.post('/start-voting', async (req, res) => {
   await Voting.updateOne({}, { $set: { isVotingActive: true } });
@@ -80,16 +81,12 @@ wss.on('connection', async (ws, request) => {
     if (parsedMessage.type === 'vote') {
       const { voteTo } = parsedMessage;
 
-      if (!isVotingActive) {
+      // Fetch the current voting state from the database
+      const votingData = await Voting.findOne();
+      if (!votingData.isVotingActive) {
         ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
         return;
       }
-
-      const votingData = await Voting.findOne();
-      // if (votingData.ipVotes.has(ipAddress)) {
-      //   ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
-      //   return;
-      // }
 
       if (votingData.votingPolls[voteTo] !== undefined) {
         votingData.votingPolls[voteTo]++;
@@ -98,6 +95,7 @@ wss.on('connection', async (ws, request) => {
 
         await votingData.save();
 
+        // Broadcast updated voting data to all connected clients
         wss.clients.forEach((client) => {
           if (client.readyState === client.OPEN) {
             client.send(JSON.stringify({ type: 'update', data: votingData }));
