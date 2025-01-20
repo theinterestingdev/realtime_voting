@@ -90,37 +90,42 @@ wss.on('connection', async (ws, request) => {
   });
 
   ws.on('message', async (message) => {
-    const parsedMessage = JSON.parse(message);
+    try {
+      const parsedMessage = JSON.parse(message);
 
-    if (parsedMessage.type === 'vote') {
-      const { voteTo } = parsedMessage;
+      if (parsedMessage.type === 'vote') {
+        const { voteTo } = parsedMessage;
 
-      if (!isVotingActive) {
-        ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
-        return;
+        if (!isVotingActive) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
+          return;
+        }
+
+        const votingData = await Voting.findOne();
+        if (votingData.ipVotes.has(ipAddress)) {
+          ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
+          return;
+        }
+
+        if (votingData.votingPolls[voteTo] !== undefined) {
+          votingData.votingPolls[voteTo]++;
+          votingData.totalVotes++;
+          votingData.ipVotes.set(ipAddress, voteTo);
+
+          await votingData.save();
+
+          wss.clients.forEach((client) => {
+            if (client.readyState === client.OPEN) {
+              client.send(JSON.stringify({ type: 'update', data: votingData }));
+            }
+          });
+        } else {
+          ws.send(JSON.stringify({ type: 'error', message: 'Invalid vote option!' }));
+        }
       }
-
-      const votingData = await Voting.findOne();
-      if (votingData.ipVotes.has(ipAddress)) {
-        ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
-        return;
-      }
-
-      if (votingData.votingPolls[voteTo] !== undefined) {
-        votingData.votingPolls[voteTo]++;
-        votingData.totalVotes++;
-        votingData.ipVotes.set(ipAddress, voteTo);
-
-        await votingData.save();
-
-        wss.clients.forEach((client) => {
-          if (client.readyState === client.OPEN) {
-            client.send(JSON.stringify({ type: 'update', data: votingData }));
-          }
-        });
-      } else {
-        ws.send(JSON.stringify({ type: 'error', message: 'Invalid vote option!' }));
-      }
+    } catch (error) {
+      console.error('Error handling message:', error);
+      ws.send(JSON.stringify({ type: 'error', message: 'An error occurred.' }));
     }
   });
 
@@ -136,7 +141,10 @@ wss.on('connection', async (ws, request) => {
 // Keep-Alive Interval
 setInterval(() => {
   wss.clients.forEach((ws) => {
-    if (!ws.isAlive) return ws.terminate();
+    if (!ws.isAlive) {
+      console.log('Terminating stale connection');
+      return ws.terminate();
+    }
     ws.isAlive = false;
     ws.ping();
   });
