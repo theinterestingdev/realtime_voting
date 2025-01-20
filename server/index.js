@@ -14,7 +14,7 @@ const wss = new WebSocketServer({ noServer: true });
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL, // Allow the frontend domain
+  origin: process.env.CLIENT_URL,
   methods: ['GET', 'POST'],
   credentials: true,
 }));
@@ -76,56 +76,44 @@ app.post('/clear-votes', async (req, res) => {
 
 // WebSocket Handling
 wss.on('connection', async (ws, request) => {
-  const ipAddress =
-    request.headers['x-forwarded-for']?.split(',')[0] || request.socket.remoteAddress;
+  const ipAddress = request.socket.remoteAddress;
 
   console.log(`Connected: ${ipAddress}`);
   const votingData = await Voting.findOne();
   ws.send(JSON.stringify({ type: 'update', data: votingData }));
 
-  // Ping/Pong Keep-Alive
-  ws.isAlive = true;
-  ws.on('pong', () => {
-    ws.isAlive = true;
-  });
-
   ws.on('message', async (message) => {
-    try {
-      const parsedMessage = JSON.parse(message);
+    const parsedMessage = JSON.parse(message);
 
-      if (parsedMessage.type === 'vote') {
-        const { voteTo } = parsedMessage;
+    if (parsedMessage.type === 'vote') {
+      const { voteTo } = parsedMessage;
 
-        if (!isVotingActive) {
-          ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
-          return;
-        }
-
-        const votingData = await Voting.findOne();
-        if (votingData.ipVotes.has(ipAddress)) {
-          ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
-          return;
-        }
-
-        if (votingData.votingPolls[voteTo] !== undefined) {
-          votingData.votingPolls[voteTo]++;
-          votingData.totalVotes++;
-          votingData.ipVotes.set(ipAddress, voteTo);
-
-          await votingData.save();
-
-          wss.clients.forEach((client) => {
-            if (client.readyState === client.OPEN) {
-              client.send(JSON.stringify({ type: 'update', data: votingData }));
-            }
-          });
-        } else {
-          ws.send(JSON.stringify({ type: 'error', message: 'Invalid vote option!' }));
-        }
+      if (!isVotingActive) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
+        return;
       }
-    } catch (error) {
-      console.error('Error handling message:', error);
-      ws.send(JSON.stringify({ type: 'error', message: 'An error occurred.' }));
+
+      const votingData = await Voting.findOne();
+      if (votingData.ipVotes.has(ipAddress)) {
+        ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
+        return;
+      }
+
+      if (votingData.votingPolls[voteTo] !== undefined) {
+        votingData.votingPolls[voteTo]++;
+        votingData.totalVotes++;
+        votingData.ipVotes.set(ipAddress, voteTo);
+
+        await votingData.save();
+
+        wss.clients.forEach((client) => {
+          if (client.readyState === client.OPEN) {
+            client.send(JSON.stringify({ type: 'update', data: votingData }));
+          }
+        });
+      } else {
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid vote option!' }));
+      }
     }
   });
 
@@ -137,18 +125,6 @@ wss.on('connection', async (ws, request) => {
     console.error(`WebSocket error for ${ipAddress}:`, err);
   });
 });
-
-// Keep-Alive Interval
-setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (!ws.isAlive) {
-      console.log('Terminating stale connection');
-      return ws.terminate();
-    }
-    ws.isAlive = false;
-    ws.ping();
-  });
-}, 30000);
 
 // Upgrade HTTP to WebSocket
 server.on('upgrade', (request, socket, head) => {
