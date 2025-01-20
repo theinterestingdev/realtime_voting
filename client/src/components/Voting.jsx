@@ -10,13 +10,14 @@ const Voting = () => {
   const [totalVotes, setTotalVotes] = useState(0);
   const [vote, setVote] = useState('');
   const [error, setError] = useState('');
+  const [confirmation, setConfirmation] = useState(''); // New state for confirmation message
   const [ws, setWs] = useState(null);
 
   const colors = {
     amazon: '#FDF7F4',
-    netflix: '#FB4141', 
-    disney: '#79D7BE', 
-    hulu: '#16C47F', 
+    netflix: '#FB4141',
+    disney: '#79D7BE',
+    hulu: '#16C47F',
   };
 
   const connectWebSocket = () => {
@@ -33,9 +34,12 @@ const Voting = () => {
       if (message.type === 'update') {
         setVotingPolls(message.data.votingPolls);
         setTotalVotes(message.data.totalVotes);
-        if (message.data.success) setError(''); // Clear error if update is successful
+        setError(''); // Clear error on successful update
       } else if (message.type === 'error') {
         setError(message.message);
+      } else if (message.type === 'confirmation') {
+        setConfirmation(message.message); // Set the confirmation message
+        setTimeout(() => setConfirmation(''), 5000); // Clear after 5 seconds
       }
     };
 
@@ -73,7 +77,7 @@ const Voting = () => {
     <div className="voting_main w-[520px] flex-col justify-center items-center bg-black p-4 rounded-md">
       <h1 className="text-white font-extrabold bg-black">Make your vote count..</h1>
       {error && <p className="text-red-500">{error}</p>}
-      {vote && <p className="text-green-500">Thank you for voting for {vote}!</p>}
+      {confirmation && <p className="text-green-500">{confirmation}</p>} {/* Display confirmation message */}
 
       {Object.entries(votingPolls).map(([key, votes]) => {
         const percentage = totalVotes ? Math.round((votes / totalVotes) * 100) : 0;

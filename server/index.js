@@ -106,37 +106,44 @@ wss.on('connection', async (ws, request) => {
 
   ws.on('message', async (message) => {
     const parsedMessage = JSON.parse(message);
-
+  
     if (parsedMessage.type === 'vote') {
       const { voteTo } = parsedMessage;
       const votingData = await Voting.findOne();
-
+  
       if (!votingData.isVotingActive) {
         ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
         return;
       }
-
+  
       if (votingData.ipVotes.has(sanitizedIP)) {
         ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
         return;
       }
-
+  
       if (votingData.votingPolls[voteTo] !== undefined) {
+        // Update vote count and IP record
         votingData.votingPolls[voteTo]++;
         votingData.totalVotes++;
         votingData.ipVotes.set(sanitizedIP, voteTo); // Use sanitized key
-
+  
         await votingData.save();
-
+  
+        // Send real-time update to all connected clients
         wss.clients.forEach((client) => {
           if (client.readyState === client.OPEN) {
             client.send(JSON.stringify({ type: 'update', data: votingData }));
           }
         });
+  
+        // Send confirmation to the voter
+        ws.send(JSON.stringify({ type: 'confirmation', message: `Thank you for voting for ${voteTo}` }));
       } else {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid vote option!' }));
       }
     }
+  
+  
   });
 
   ws.on('close', () => {
