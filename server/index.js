@@ -14,7 +14,7 @@ const wss = new WebSocketServer({ noServer: true });
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: process.env.CLIENT_URL, // Allow the frontend domain
   methods: ['GET', 'POST'],
   credentials: true,
 }));
@@ -76,11 +76,18 @@ app.post('/clear-votes', async (req, res) => {
 
 // WebSocket Handling
 wss.on('connection', async (ws, request) => {
-  const ipAddress = request.socket.remoteAddress;
+  const ipAddress =
+    request.headers['x-forwarded-for']?.split(',')[0] || request.socket.remoteAddress;
 
   console.log(`Connected: ${ipAddress}`);
   const votingData = await Voting.findOne();
   ws.send(JSON.stringify({ type: 'update', data: votingData }));
+
+  // Ping/Pong Keep-Alive
+  ws.isAlive = true;
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
 
   ws.on('message', async (message) => {
     const parsedMessage = JSON.parse(message);
@@ -94,10 +101,10 @@ wss.on('connection', async (ws, request) => {
       }
 
       const votingData = await Voting.findOne();
-      // if (votingData.ipVotes.has(ipAddress)) {
-      //   ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
-      //   return;
-      // }
+      if (votingData.ipVotes.has(ipAddress)) {
+        ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
+        return;
+      }
 
       if (votingData.votingPolls[voteTo] !== undefined) {
         votingData.votingPolls[voteTo]++;
@@ -125,6 +132,15 @@ wss.on('connection', async (ws, request) => {
     console.error(`WebSocket error for ${ipAddress}:`, err);
   });
 });
+
+// Keep-Alive Interval
+setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (!ws.isAlive) return ws.terminate();
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
 
 // Upgrade HTTP to WebSocket
 server.on('upgrade', (request, socket, head) => {
