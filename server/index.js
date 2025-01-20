@@ -94,10 +94,10 @@ wss.on('connection', async (ws, request) => {
       }
 
       const votingData = await Voting.findOne();
-      if (votingData.ipVotes.has(ipAddress)) {
-        ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
-        return;
-      }
+      // if (votingData.ipVotes.has(ipAddress)) {
+      //   ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
+      //   return;
+      // }
 
       if (votingData.votingPolls[voteTo] !== undefined) {
         votingData.votingPolls[voteTo]++;
