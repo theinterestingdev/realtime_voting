@@ -33,8 +33,8 @@ const votingSchema = new mongoose.Schema({
     hulu: { type: Number, default: 0 },
   },
   totalVotes: { type: Number, default: 0 },
-  ipVotes: { type: Map, of: String, default: {} },
-  isVotingActive: { type: Boolean, default: false }, // Add this field
+  ipVotes: { type: Map, of: String, default: {} }, // Retain Map for performance
+  isVotingActive: { type: Boolean, default: false },
 });
 
 const Voting = mongoose.model('Voting', votingSchema);
@@ -83,12 +83,22 @@ app.post('/clear-votes', async (req, res) => {
   }
 });
 
+// Utility Functions
+function sanitizeKey(key) {
+  return key.replace(/\./g, '_'); // Replace dots with underscores
+}
+
+function decodeKey(key) {
+  return key.replace(/_/g, '.'); // Replace underscores back to dots
+}
+
+
 
 // WebSocket Handling
 wss.on('connection', async (ws, request) => {
-  // Extract IP address from x-forwarded-for header or fallback to socket address
   const forwarded = request.headers['x-forwarded-for'];
   const ipAddress = forwarded ? forwarded.split(',')[0].trim() : request.socket.remoteAddress;
+  const sanitizedIP = sanitizeKey(ipAddress); // Sanitize the IP address
 
   console.log(`Connected: ${ipAddress}`);
   const votingData = await Voting.findOne();
@@ -99,31 +109,25 @@ wss.on('connection', async (ws, request) => {
 
     if (parsedMessage.type === 'vote') {
       const { voteTo } = parsedMessage;
-
-      // Fetch the current voting state from the database
       const votingData = await Voting.findOne();
 
-      // Ensure voting is active before proceeding
       if (!votingData.isVotingActive) {
         ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
         return;
       }
 
-      // Check if the IP has already voted
-      if (votingData.ipVotes.has(ipAddress)) {
+      if (votingData.ipVotes.has(sanitizedIP)) {
         ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
         return;
       }
 
-      // Validate the vote option and update the database
       if (votingData.votingPolls[voteTo] !== undefined) {
         votingData.votingPolls[voteTo]++;
         votingData.totalVotes++;
-        votingData.ipVotes.set(ipAddress, voteTo); // Record the vote with the IP address
+        votingData.ipVotes.set(sanitizedIP, voteTo); // Use sanitized key
 
         await votingData.save();
 
-        // Broadcast updated voting data to all connected clients
         wss.clients.forEach((client) => {
           if (client.readyState === client.OPEN) {
             client.send(JSON.stringify({ type: 'update', data: votingData }));
@@ -142,7 +146,12 @@ wss.on('connection', async (ws, request) => {
   ws.on('error', (err) => {
     console.error(`WebSocket error for ${ipAddress}:`, err);
   });
+  const decodedIPs = Array.from(votingData.ipVotes.keys()).map(decodeKey);
+console.log(decodedIPs);
+
 });
+
+
 
 
 
