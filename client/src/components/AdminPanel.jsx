@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+
 import axios from 'axios';
 
 const AdminPanel = () => {
@@ -47,10 +48,10 @@ const AdminPanel = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="admin-login w-full h-screen bg-gray-100 flex flex-col justify-center items-center text-center px-4">
-        <h1 className="text-2xl font-bold mb-4">Admin Login</h1>
+      <div className="admin-login w-full h-screen bg-white flex flex-col justify-center items-center text-center px-4">
+        <h1 className="text-2xl font-bold mb-4 bg-white">Admin Login</h1>
         <input
-          className="border border-gray-300 p-2 rounded w-full max-w-sm mb-4"
+          className="border border-gray-300 p-2 rounded w-full max-w-sm mb-4 bg-transparent"
           type="password"
           placeholder="Enter admin password"
           value={password}
@@ -68,15 +69,15 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="admin-panel w-full h-screen bg-gray-100 text-black flex flex-col justify-center items-center px-4">
-      <h1 className="text-3xl font-bold mb-6">Admin Panel</h1>
-      <p className="mb-4">
+    <div className="admin-panel w-full h-screen bg-white text-black flex flex-col justify-center items-center px-4">
+      <h1 className="text-3xl font-bold mb-6 bg-white">Admin Panel</h1>
+      <p className="mb-4 bg-white">
         Current Voting State:{' '}
-        <span className={isVotingActive ? 'text-green-500' : 'text-red-500'}>
-          {isVotingActive ? 'Active' : 'Inactive'}
+        <span className= {isVotingActive ? 'text-green-500 bg-white' : 'text-red-500  bg-white'}>
+          {isVotingActive ? 'Active' : 'Inactive'} 
         </span>
       </p>
-      <div className="flex flex-col gap-4 w-full max-w-sm">
+      <div className="flex flex-col gap-4 w-full max-w-sm bg-white">
         <button
           onClick={() => handleAction('start-voting')}
           className={`bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ${

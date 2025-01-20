@@ -57,18 +57,14 @@ const Voting = () => {
       return;
     }
 
-    // if (vote) {
-    //   setError('You have already voted!');
-    //   return;
-    // }
-
+ 
     ws.send(JSON.stringify({ type: 'vote', voteTo: id }));
     setVote(true);
   };
 
   return (
     <div className="voting_main w-[520px] flex-col justify-center items-center bg-black p-4 rounded-md">
-      <h1 className="text-white font-extrabold">Make your vote count..</h1>
+      <h1 className="text-white font-extrabold bg-black">Make your vote count..</h1>
       {error && <p className="text-red-500">{error}</p>}
       {Object.entries(votingPolls).map(([key, votes]) => {
         const percentage = totalVotes ? Math.round((votes / totalVotes) * 100) : 0;

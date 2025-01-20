@@ -66,6 +66,23 @@ app.get('/voting-status', async (req, res) => {
   res.send({ isVotingActive: votingData.isVotingActive });
 });
 
+app.post('/clear-votes', async (req, res) => {
+  try {
+    // Reset all voting data
+    await Voting.updateOne({}, { 
+      $set: { 
+        votingPolls: { amazon: 0, netflix: 0, disney: 0, hulu: 0 },
+        totalVotes: 0,
+        ipVotes: {} 
+      } 
+    });
+    res.send({ message: 'All votes and IPs have been cleared.' });
+  } catch (error) {
+    console.error('Error clearing votes:', error);
+    res.status(500).send({ message: 'Failed to clear votes and IPs.' });
+  }
+});
+
 
 // WebSocket Handling
 wss.on('connection', async (ws, request) => {
@@ -83,15 +100,24 @@ wss.on('connection', async (ws, request) => {
 
       // Fetch the current voting state from the database
       const votingData = await Voting.findOne();
+      
+      // Ensure voting is active before proceeding
       if (!votingData.isVotingActive) {
         ws.send(JSON.stringify({ type: 'error', message: 'Voting is currently stopped!' }));
         return;
       }
 
+      // Check if the IP has already voted
+      if (votingData.ipVotes.has(ipAddress)) {
+        ws.send(JSON.stringify({ type: 'error', message: 'You have already voted!' }));
+        return;
+      }
+
+      // Validate the vote option and update the database
       if (votingData.votingPolls[voteTo] !== undefined) {
         votingData.votingPolls[voteTo]++;
         votingData.totalVotes++;
-        votingData.ipVotes.set(ipAddress, voteTo);
+        votingData.ipVotes.set(ipAddress, voteTo); // Record the vote with the IP address
 
         await votingData.save();
 
@@ -115,6 +141,7 @@ wss.on('connection', async (ws, request) => {
     console.error(`WebSocket error for ${ipAddress}:`, err);
   });
 });
+
 
 // Upgrade HTTP to WebSocket
 server.on('upgrade', (request, socket, head) => {
