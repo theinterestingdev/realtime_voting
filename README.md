@@ -17,8 +17,9 @@ Backend Hosted On :
 
 Features :
 
-Realtime voting + IP Based Unique Voting ( IP BASED FILTERING ). 
-Websocket Implementation for Realtime Vote Updates.
+1. Responsive UI + Percentage Based Calculation of the votes recieved.
+2. Realtime voting + IP Based Unique Voting ( IP BASED FILTERING ). 
+3. Websocket Implementation for Realtime Vote Updates.
 
 ---------------------------------
 Made By : Kartik Sharma
